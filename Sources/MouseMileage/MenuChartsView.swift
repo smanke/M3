@@ -1,0 +1,189 @@
+import Charts
+import SwiftUI
+
+struct MenuChartsView: View {
+    @ObservedObject var viewModel: HistoryViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(AppInfo.displayName)
+                .font(.system(size: 13, weight: .semibold))
+            ChartCard(title: "Today by Hour", buckets: viewModel.byHour, xAxisStyle: .hour)
+            ChartCard(title: "By Day", buckets: viewModel.byDay, xAxisStyle: .day)
+            ChartCard(title: "Year to Date", buckets: viewModel.yearToDate, xAxisStyle: .month)
+        }
+        .padding(14)
+        .frame(width: 340)
+    }
+}
+
+private enum XAxisStyle {
+    case hour, day, month
+}
+
+private struct DisplayPoint: Identifiable {
+    let date: Date
+    let value: Double
+    var id: Date { date }
+}
+
+private struct ChartCard: View {
+    let title: String
+    let buckets: [MileageHistoryStore.Bucket]
+    let xAxisStyle: XAxisStyle
+
+    private static let calendar = Calendar.current
+
+    // Buckets arrive in miles; switch to feet when the whole chart is under a mile,
+    // matching the menu bar's own feet/miles convention.
+    private var useFeet: Bool {
+        (buckets.map(\.points).max() ?? 0) < 1.0
+    }
+
+    private var unitSuffix: String { useFeet ? "ft" : "mi" }
+
+    private var points: [DisplayPoint] {
+        buckets.map { bucket in
+            let value = useFeet ? bucket.points * 5280 : bucket.points
+            return DisplayPoint(date: bucket.start, value: value)
+        }
+    }
+
+    private var maxValue: Double {
+        max(points.map(\.value).max() ?? 0, 0.1)
+    }
+
+    private var yTicks: [Double] {
+        [0, maxValue / 3, maxValue * 2 / 3, maxValue]
+    }
+
+    private var xTicks: [Date] {
+        guard let first = points.first?.date, let last = points.last?.date else { return [] }
+        switch xAxisStyle {
+        case .hour:
+            return stride(from: 0, through: 23, by: 3).compactMap {
+                Self.calendar.date(byAdding: .hour, value: $0, to: Self.calendar.startOfDay(for: first))
+            }
+        case .day:
+            return points.map(\.date)
+        case .month:
+            var result: [Date] = []
+            var cursor = Self.calendar.date(from: Self.calendar.dateComponents([.year, .month], from: first)) ?? first
+            while cursor <= last {
+                result.append(cursor)
+                guard let next = Self.calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+                cursor = next
+            }
+            return result
+        }
+    }
+
+    private static let hourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h a"
+        return f
+    }()
+
+    private func xLabel(for date: Date) -> String {
+        switch xAxisStyle {
+        case .hour:
+            return Self.hourFormatter.string(from: date)
+        case .day:
+            let f = DateFormatter()
+            f.dateFormat = "EEE"
+            return f.string(from: date)
+        case .month:
+            let f = DateFormatter()
+            f.dateFormat = "MMM"
+            return f.string(from: date)
+        }
+    }
+
+    /// The "now" marker only makes sense on the hour chart, where the x-axis spans
+    /// the whole day even though only hours up to now have data.
+    private var nowMarker: Date? {
+        xAxisStyle == .hour ? Date() : nil
+    }
+
+    private var areaGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color.accentColor.opacity(0.32), Color.accentColor.opacity(0.02)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    @ChartContentBuilder
+    private var areaContent: some ChartContent {
+        ForEach(points) { point in
+            AreaMark(x: .value("Time", point.date), y: .value("Value", point.value))
+                .interpolationMethod(.stepCenter)
+        }
+        .foregroundStyle(areaGradient)
+    }
+
+    @ChartContentBuilder
+    private var lineContent: some ChartContent {
+        ForEach(points) { point in
+            LineMark(x: .value("Time", point.date), y: .value("Value", point.value))
+                .interpolationMethod(.stepCenter)
+        }
+        .foregroundStyle(Color.accentColor)
+        .lineStyle(StrokeStyle(lineWidth: 2.5))
+    }
+
+    @ChartContentBuilder
+    private var nowMarkerContent: some ChartContent {
+        if let nowMarker {
+            RuleMark(x: .value("Now", nowMarker))
+                .lineStyle(StrokeStyle(lineWidth: 1.25, dash: [4, 3]))
+                .foregroundStyle(Color.red.opacity(0.55))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary)
+
+            Chart {
+                areaContent
+                lineContent
+                nowMarkerContent
+            }
+            .chartYScale(domain: 0...maxValue)
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: yTicks) { value in
+                    AxisGridLine().foregroundStyle(Color.gray.opacity(0.15))
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(String(format: "%.1f %@", v, unitSuffix))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: xTicks) { value in
+                    AxisGridLine().foregroundStyle(Color.clear)
+                    AxisTick().foregroundStyle(Color.gray.opacity(0.25))
+                    AxisValueLabel {
+                        if let d = value.as(Date.self) {
+                            Text(xLabel(for: d))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .frame(height: 110)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.gray.opacity(0.08))
+        )
+    }
+}
