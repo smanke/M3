@@ -4,6 +4,14 @@ A macOS menu bar app that tracks cumulative mouse/trackpad movement distance,
 keystrokes, and left/right click counts. Counters persist across restarts and
 reboots (stored via `UserDefaults`, which is backed by disk).
 
+## Install
+
+[**Download M3 Tracker 1.13**](dist/M3%20Tracker%201.13.zip) — signed with a
+Developer ID certificate and notarized by Apple, so it opens cleanly with no
+Gatekeeper warning. Unzip, drag `M3 Tracker.app` to `/Applications`, and
+launch it. On first launch, grant Accessibility (Input Monitoring) access
+when macOS prompts — see [Required permission](#required-permission) below.
+
 ## How it works
 
 - `EventMonitor` uses `NSEvent.addGlobalMonitorForEvents` to observe pointer
