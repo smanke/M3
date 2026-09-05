@@ -36,6 +36,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
             .target = self
+        menu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+            .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit \(AppInfo.shortName)", action: #selector(quit), keyEquivalent: "q")
             .target = self
@@ -52,6 +54,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func openPreferences() {
         preferencesController.show()
+    }
+
+    @objc private func checkForUpdates() {
+        UpdateController.checkForUpdates()
     }
 
     @objc private func quit() {
