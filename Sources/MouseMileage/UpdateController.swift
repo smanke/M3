@@ -185,19 +185,22 @@ enum UpdateController {
         let staging = stagedApp.deletingLastPathComponent()
         let script = staging.appendingPathComponent("install.sh")
 
-        // The old bundle is moved aside rather than deleted, so a failed copy
-        // can put it back instead of leaving no app installed at all.
+        // The bundle is updated *in place* rather than deleted and recreated.
+        // Deleting it orphans the app's Accessibility grant: the entry stays
+        // visible and switched on in System Settings while the app is actually
+        // denied, and keystroke counting silently stops. A backup copy is kept
+        // alongside only long enough to roll back a failed sync.
         let body = """
         #!/bin/sh
         # Wait for the running app to quit before replacing its bundle.
         while kill -0 \(ProcessInfo.processInfo.processIdentifier) 2>/dev/null; do sleep 0.2; done
-        /bin/rm -rf "\(destination).old"
-        /bin/mv "\(destination)" "\(destination).old" 2>/dev/null
-        if /bin/cp -R "\(stagedApp.path)" "\(destination)"; then
-          /bin/rm -rf "\(destination).old"
+        /bin/rm -rf "\(destination).backup"
+        /bin/cp -R "\(destination)" "\(destination).backup"
+        if /usr/bin/rsync -a --delete "\(stagedApp.path)/" "\(destination)/"; then
+          /bin/rm -rf "\(destination).backup"
         else
-          /bin/rm -rf "\(destination)"
-          /bin/mv "\(destination).old" "\(destination)"
+          /usr/bin/rsync -a --delete "\(destination).backup/" "\(destination)/"
+          /bin/rm -rf "\(destination).backup"
         fi
         # Verified above, so clear the download flag to avoid a redundant prompt.
         /usr/bin/xattr -dr com.apple.quarantine "\(destination)" 2>/dev/null
