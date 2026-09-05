@@ -52,6 +52,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit \(AppInfo.shortName)", action: #selector(quit), keyEquivalent: "q")
             .target = self
+
+        // Version last, as a non-actionable footer.
+        menu.addItem(.separator())
+        let versionItem = NSMenuItem(title: "\(AppInfo.shortName) \(AppInfo.displayVersion)", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
+
         statusItem.menu = menu
     }
 
