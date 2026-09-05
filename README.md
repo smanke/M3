@@ -66,11 +66,23 @@ instead of leaving no app installed at all.
 
 ## Required permission
 
-Global keystroke/mouse monitoring requires **Accessibility** (Input
-Monitoring) permission. On first launch macOS will prompt you to grant it in
-**System Settings → Privacy & Security → Accessibility** (and/or **Input
-Monitoring**). Until granted, movement/click/keystroke events from other apps
-won't be seen.
+Keystroke counting requires **Accessibility** permission. On first launch
+macOS prompts for it; it can also be granted at **System Settings → Privacy &
+Security → Accessibility**.
+
+The important wrinkle is that the permission is only needed for *keystrokes*.
+A global event monitor receives mouse movement and clicks with no permission
+at all, but `NSEvent` delivers key events only to an app that is trusted for
+Accessibility — and when it isn't, those events simply never arrive, with no
+error of any kind. The app therefore looks like it is working: mileage and
+click counts climb normally while the keystroke count sits at zero forever.
+
+Because that failure is invisible, `EventMonitor` tracks trust explicitly.
+Preferences shows a warning with a button straight to the Accessibility
+settings when the app isn't trusted, the state is logged at launch, and the
+monitors are re-registered if trust is granted while the app is running —
+a monitor registered before trust was granted does not start receiving key
+events on its own.
 
 ## Running during development
 

@@ -1,3 +1,4 @@
+import ApplicationServices
 import Combine
 import Foundation
 
@@ -10,6 +11,9 @@ final class PreferencesViewModel: ObservableObject {
     @Published var checkForUpdatesAtLaunch: Bool {
         didSet { UpdateSettings.checkForUpdatesAtLaunch = checkForUpdatesAtLaunch }
     }
+    /// Keystrokes are only delivered to a global monitor when the app is
+    /// trusted for Accessibility; without it they silently never arrive.
+    @Published var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
 
     private var metricsObserver: NSObjectProtocol?
 
@@ -44,6 +48,7 @@ final class PreferencesViewModel: ObservableObject {
     /// Settings for the login item) when the window is reopened.
     func refreshSettings() {
         launchAtLoginEnabled = LaunchAtLoginController.isEnabled
+        isAccessibilityTrusted = AXIsProcessTrusted()
         if checkForUpdatesAtLaunch != UpdateSettings.checkForUpdatesAtLaunch {
             checkForUpdatesAtLaunch = UpdateSettings.checkForUpdatesAtLaunch
         }
@@ -58,6 +63,10 @@ final class PreferencesViewModel: ObservableObject {
             launchAtLoginEnabled = LaunchAtLoginController.isEnabled
             launchAtLoginError = "Couldn't update Launch at Login. This requires M3 to be running from an installed app in /Applications."
         }
+    }
+
+    func openAccessibilitySettings() {
+        EventMonitor.openAccessibilitySettings()
     }
 
     func resetMileage() {

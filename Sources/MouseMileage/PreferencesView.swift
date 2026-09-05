@@ -7,6 +7,9 @@ struct PreferencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             statsSection
+            if !viewModel.isAccessibilityTrusted {
+                accessibilityWarning
+            }
             Divider()
             settingsSection
             Divider()
@@ -24,6 +27,28 @@ struct PreferencesView: View {
             Text("Clicks — \(viewModel.clicksText)")
         }
         .font(.system(size: 13))
+    }
+
+    /// Mouse events arrive without permission but key events don't, so without
+    /// this the app looks like it works while silently counting no keystrokes.
+    private var accessibilityWarning: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Keystrokes aren't being counted")
+                .font(.system(size: 12, weight: .semibold))
+            Text("M3 Tracker needs Accessibility permission to see keystrokes. Mileage and clicks are counted without it, which is why those still work.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Accessibility Settings…") {
+                viewModel.openAccessibilitySettings()
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.orange.opacity(0.12))
+        )
     }
 
     private var settingsSection: some View {
