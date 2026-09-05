@@ -25,6 +25,8 @@ struct PreferencesView: View {
             Text("Mileage: \(viewModel.mileageText)")
             Text("Keystrokes: \(viewModel.keystrokesText)")
             Text("Clicks — \(viewModel.clicksText)")
+            Text("Tracking since: \(viewModel.trackingSinceText)")
+                .foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
     }
@@ -33,9 +35,9 @@ struct PreferencesView: View {
     /// this the app looks like it works while silently counting no keystrokes.
     private var accessibilityWarning: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Keystrokes aren't being counted")
+            Text("Keystrokes in other apps aren't being counted")
                 .font(.system(size: 12, weight: .semibold))
-            Text("M3 Tracker needs Accessibility permission to see keystrokes. Mileage and clicks are counted without it, which is why those still work.")
+            Text("M3 Tracker needs Accessibility permission to see keystrokes typed elsewhere. Only keys pressed while this window has focus are counted right now. Mileage and clicks need no permission, which is why those still work.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

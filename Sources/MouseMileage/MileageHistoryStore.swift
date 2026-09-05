@@ -86,6 +86,12 @@ final class MileageHistoryStore {
         daily.removeAll { $0.start < dailyCutoff }
     }
 
+    /// Earliest day with recorded movement, used to backfill a tracking start
+    /// date for installs that predate it being recorded.
+    var earliestRecordedDay: Date? {
+        daily.map(\.start).min()
+    }
+
     func resetHistory() {
         hourly = []
         daily = []

@@ -17,9 +17,19 @@ final class EventMonitor {
     private var trustTimer: Timer?
     private var wasTrusted = false
 
+    /// Mirrored into `UserDefaults` so the trust state can be inspected from
+    /// outside the app (`defaults read com.smanke.MouseMileage`). Undelivered
+    /// key events leave no other trace, which makes this hard to diagnose
+    /// without a channel that doesn't depend on reading the app's logs.
+    static let trustedDefaultsKey = "diagnostics.accessibilityTrusted"
+
     /// Whether this app is currently trusted for Accessibility, which is what
     /// keystroke monitoring depends on.
     var isTrusted: Bool { AXIsProcessTrusted() }
+
+    private func recordTrust(_ trusted: Bool) {
+        UserDefaults.standard.set(trusted, forKey: EventMonitor.trustedDefaultsKey)
+    }
 
     func requestPermissionIfNeeded() {
         let options: [String: Bool] = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true]
@@ -29,6 +39,7 @@ final class EventMonitor {
     func start() {
         wasTrusted = isTrusted
         NSLog("M3 Tracker: Accessibility trusted = \(wasTrusted). Keystroke counting requires this.")
+        recordTrust(wasTrusted)
 
         register()
 
@@ -45,6 +56,7 @@ final class EventMonitor {
         guard trusted != wasTrusted else { return }
         wasTrusted = trusted
         NSLog("M3 Tracker: Accessibility trust changed to \(trusted); re-registering event monitors.")
+        recordTrust(trusted)
 
         unregister()
         register()

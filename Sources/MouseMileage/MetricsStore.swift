@@ -14,6 +14,7 @@ final class MetricsStore {
         static let keystrokes = "keystrokes"
         static let leftClicks = "leftClicks"
         static let rightClicks = "rightClicks"
+        static let trackingStartedAt = "trackingStartedAt"
     }
 
     // A Cocoa "point" is nominally 1/72 inch; this is the standard conversion
@@ -26,6 +27,9 @@ final class MetricsStore {
     private(set) var keystrokes: Int
     private(set) var leftClicks: Int
     private(set) var rightClicks: Int
+    /// When these totals started accumulating, so the numbers have a span to
+    /// be read against. Reset along with "Reset All".
+    private(set) var trackingStartedAt: Date
 
     private var dirty = false
     private var saveTimer: Timer?
@@ -35,6 +39,15 @@ final class MetricsStore {
         keystrokes = defaults.integer(forKey: Keys.keystrokes)
         leftClicks = defaults.integer(forKey: Keys.leftClicks)
         rightClicks = defaults.integer(forKey: Keys.rightClicks)
+
+        if let stored = defaults.object(forKey: Keys.trackingStartedAt) as? Date {
+            trackingStartedAt = stored
+        } else {
+            // Installs that predate this being recorded still have daily history
+            // to date from; only a genuinely fresh install starts from today.
+            trackingStartedAt = MileageHistoryStore.shared.earliestRecordedDay ?? Date()
+            defaults.set(trackingStartedAt, forKey: Keys.trackingStartedAt)
+        }
 
         saveTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             self?.saveIfNeeded()
@@ -97,6 +110,8 @@ final class MetricsStore {
         keystrokes = 0
         leftClicks = 0
         rightClicks = 0
+        // Everything is starting over, so the span the totals cover does too.
+        trackingStartedAt = Date()
         dirty = true
         saveIfNeeded()
         MileageHistoryStore.shared.resetHistory()
@@ -128,6 +143,7 @@ final class MetricsStore {
         guard dirty else { return }
         defaults.set(totalPoints, forKey: Keys.totalPoints)
         defaults.set(keystrokes, forKey: Keys.keystrokes)
+        defaults.set(trackingStartedAt, forKey: Keys.trackingStartedAt)
         defaults.set(leftClicks, forKey: Keys.leftClicks)
         defaults.set(rightClicks, forKey: Keys.rightClicks)
         dirty = false

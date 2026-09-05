@@ -6,6 +6,14 @@ final class PreferencesViewModel: ObservableObject {
     @Published var mileageText: String = ""
     @Published var keystrokesText: String = ""
     @Published var clicksText: String = ""
+    @Published var trackingSinceText: String = ""
+
+    private static let startedFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
     @Published var launchAtLoginEnabled: Bool
     @Published var launchAtLoginError: String?
     @Published var checkForUpdatesAtLaunch: Bool {
@@ -42,6 +50,11 @@ final class PreferencesViewModel: ObservableObject {
         mileageText = "\(MetricsFormatter.hundredths(store.totalMiles)) mi (\(MetricsFormatter.tenths(store.totalFeet)) ft)"
         keystrokesText = MetricsFormatter.count(store.keystrokes)
         clicksText = "Left: \(MetricsFormatter.count(store.leftClicks))   Right: \(MetricsFormatter.count(store.rightClicks))"
+
+        let started = store.trackingStartedAt
+        let days = Calendar.current.dateComponents([.day], from: started, to: Date()).day ?? 0
+        let span = days == 0 ? "today" : (days == 1 ? "1 day" : "\(MetricsFormatter.count(days)) days")
+        trackingSinceText = "\(Self.startedFormatter.string(from: started)) (\(span))"
     }
 
     /// Picks up changes made elsewhere (the menu bar toggle, or System
