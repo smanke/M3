@@ -158,7 +158,7 @@ private struct ChartCard: View {
                     AxisGridLine().foregroundStyle(Color.gray.opacity(0.15))
                     AxisValueLabel {
                         if let v = value.as(Double.self) {
-                            Text(String(format: "%.1f %@", v, unitSuffix))
+                            Text("\(MetricsFormatter.tenths(v)) \(unitSuffix)")
                                 .font(.system(size: 9))
                                 .foregroundStyle(.secondary)
                         }

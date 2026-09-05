@@ -35,9 +35,9 @@ final class PreferencesViewModel: ObservableObject {
 
     func refreshText() {
         let store = MetricsStore.shared
-        mileageText = String(format: "%.2f mi (%.1f ft)", store.totalMiles, store.totalFeet)
-        keystrokesText = "\(store.keystrokes)"
-        clicksText = "Left: \(store.leftClicks)   Right: \(store.rightClicks)"
+        mileageText = "\(MetricsFormatter.hundredths(store.totalMiles)) mi (\(MetricsFormatter.tenths(store.totalFeet)) ft)"
+        keystrokesText = MetricsFormatter.count(store.keystrokes)
+        clicksText = "Left: \(MetricsFormatter.count(store.leftClicks))   Right: \(MetricsFormatter.count(store.rightClicks))"
     }
 
     /// Picks up changes made elsewhere (the menu bar toggle, or System

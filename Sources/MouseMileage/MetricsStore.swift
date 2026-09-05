@@ -112,9 +112,9 @@ final class MetricsStore {
     /// Menu bar text: feet (to tenths) when under a mile, otherwise miles (to hundredths).
     var menuBarText: String {
         if totalMiles < 1.0 {
-            return String(format: "%.1f ft", totalFeet)
+            return "\(MetricsFormatter.tenths(totalFeet)) ft"
         } else {
-            return String(format: "%.2f mi", totalMiles)
+            return "\(MetricsFormatter.hundredths(totalMiles)) mi"
         }
     }
 
