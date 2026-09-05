@@ -5,6 +5,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private let preferencesController = PreferencesWindowController()
     private let historyViewModel = HistoryViewModel()
+    /// Held so its checkmark can be refreshed on open; the menu itself is
+    /// built once because the charts item hosts a live SwiftUI view.
+    private var launchUpdateCheckItem: NSMenuItem?
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -36,8 +39,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
             .target = self
-        menu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
-            .target = self
+        let updateItem = menu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        updateItem.toolTip = "Download and install the latest release from GitHub, then restart."
+
+        let autoUpdateItem = menu.addItem(withTitle: "Check for Updates at Launch", action: #selector(toggleLaunchUpdateCheck), keyEquivalent: "")
+        autoUpdateItem.target = self
+        autoUpdateItem.state = UpdateSettings.checkForUpdatesAtLaunch ? .on : .off
+        autoUpdateItem.toolTip = "Look for a newer release shortly after the app opens. You are only asked if one is found."
+        launchUpdateCheckItem = autoUpdateItem
+
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit \(AppInfo.shortName)", action: #selector(quit), keyEquivalent: "q")
             .target = self
@@ -46,6 +57,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         historyViewModel.refresh()
+        launchUpdateCheckItem?.state = UpdateSettings.checkForUpdatesAtLaunch ? .on : .off
     }
 
     @objc private func metricsDidUpdate() {
@@ -58,6 +70,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func checkForUpdates() {
         UpdateController.checkForUpdates()
+    }
+
+    @objc private func toggleLaunchUpdateCheck() {
+        UpdateSettings.checkForUpdatesAtLaunch.toggle()
     }
 
     @objc private func quit() {

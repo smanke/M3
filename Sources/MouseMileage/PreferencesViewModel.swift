@@ -7,11 +7,15 @@ final class PreferencesViewModel: ObservableObject {
     @Published var clicksText: String = ""
     @Published var launchAtLoginEnabled: Bool
     @Published var launchAtLoginError: String?
+    @Published var checkForUpdatesAtLaunch: Bool {
+        didSet { UpdateSettings.checkForUpdatesAtLaunch = checkForUpdatesAtLaunch }
+    }
 
     private var metricsObserver: NSObjectProtocol?
 
     init() {
         launchAtLoginEnabled = LaunchAtLoginController.isEnabled
+        checkForUpdatesAtLaunch = UpdateSettings.checkForUpdatesAtLaunch
         refreshText()
 
         metricsObserver = NotificationCenter.default.addObserver(
@@ -34,6 +38,15 @@ final class PreferencesViewModel: ObservableObject {
         mileageText = String(format: "%.2f mi (%.1f ft)", store.totalMiles, store.totalFeet)
         keystrokesText = "\(store.keystrokes)"
         clicksText = "Left: \(store.leftClicks)   Right: \(store.rightClicks)"
+    }
+
+    /// Picks up changes made elsewhere (the menu bar toggle, or System
+    /// Settings for the login item) when the window is reopened.
+    func refreshSettings() {
+        launchAtLoginEnabled = LaunchAtLoginController.isEnabled
+        if checkForUpdatesAtLaunch != UpdateSettings.checkForUpdatesAtLaunch {
+            checkForUpdatesAtLaunch = UpdateSettings.checkForUpdatesAtLaunch
+        }
     }
 
     func toggleLaunchAtLogin(_ enabled: Bool) {

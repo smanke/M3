@@ -10,6 +10,7 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
             window = makeWindow()
         }
         viewModel.refreshText()
+        viewModel.refreshSettings()
         window?.center()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

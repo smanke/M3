@@ -48,12 +48,21 @@ sync with `Info.plist`), and if newer, downloads the release's `.dmg` asset.
 Before installing anything it verifies the downloaded app: a valid signature,
 the **same Developer ID Team ID** as the running app, and a passing Gatekeeper
 assessment (i.e. Apple notarized it) — any failure aborts the update and
-leaves the installed app untouched. On success it hands off to a small
-detached shell script that waits for the app to quit, replaces the bundle,
-clears the quarantine flag (already verified above), and relaunches.
+leaves the installed app untouched.
 
-There's no background/automatic check — only the "Check for Updates…" menu
-item triggers it, matching Desktop Bins Widget's update strategy.
+The same check runs a few seconds after launch when "Check for Updates at
+Launch" is on (the menu bar toggle, or the checkbox in Preferences),
+deliberately silent unless there is something to offer — reporting "up to
+date", or a failed network call, on every single launch would be noise rather
+than information. Declining an update offers "Skip This Version", which stops
+the launch check raising that version again; checking manually still offers
+it.
+
+The swap itself is handed to a detached shell script, because an app cannot
+replace and relaunch its own bundle while it is the one running: the script
+waits for the process to exit, replaces the bundle, and reopens it. The old
+bundle is moved aside rather than deleted, so a failed copy restores it
+instead of leaving no app installed at all.
 
 ## Required permission
 

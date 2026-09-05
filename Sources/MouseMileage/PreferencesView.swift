@@ -34,6 +34,10 @@ struct PreferencesView: View {
             ))
             .toggleStyle(.checkbox)
 
+            Toggle("Check for updates when the app opens", isOn: $viewModel.checkForUpdatesAtLaunch)
+                .toggleStyle(.checkbox)
+                .help("Looks for a newer release on GitHub a few seconds after launch. You are only asked if there is one.")
+
             if let error = viewModel.launchAtLoginError {
                 Text(error)
                     .font(.caption)
