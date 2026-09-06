@@ -3,10 +3,15 @@
 // "26" (iron, for mileage), the "M³" symbol, and the name along the bottom.
 // Run with:
 //   swift Tools/generate_icon.swift
-// Produces Resources/AppIcon.png (1024x1024).
+//
+// Produces two variants, because the name is an unreadable smudge at the 16
+// and 32 point sizes macOS uses in Finder lists and dialogs:
+//   Resources/AppIcon.png       — full tile, used from 128pt up
+//   Resources/AppIcon-small.png — no name, larger symbol, used at 16-64pt
 
 import AppKit
 
+func renderIcon(includeName: Bool) -> NSImage {
 let canvas: CGFloat = 1024
 let image = NSImage(size: NSSize(width: canvas, height: canvas))
 
@@ -75,8 +80,9 @@ func size(of string: String, size: CGFloat) -> NSSize {
     return NSAttributedString(string: string, attributes: attributes).size()
 }
 
-// Atomic number, top-left.
-let numberSize = side * 0.115
+// Atomic number, top-left. Nudged up in the small variant so it still reads
+// once the name is gone.
+let numberSize = side * (includeName ? 0.115 : 0.135)
 let numberInset = side * 0.075
 let numberHeight = size(of: "26", size: numberSize).height
 draw("26", size: numberSize, at: CGPoint(
@@ -85,14 +91,15 @@ draw("26", size: numberSize, at: CGPoint(
 ))
 
 // "M" with a superscript "3", treated as one unit so it centres properly.
-let symbolSize = side * 0.52
-let superscriptSize = side * 0.21
+// Without the name below it, the symbol grows and recentres to fill the tile.
+let symbolSize = side * (includeName ? 0.52 : 0.62)
+let superscriptSize = symbolSize * 0.40
 let mSize = size(of: "M", size: symbolSize)
 let threeSize = size(of: "3", size: superscriptSize)
 
 let symbolWidth = mSize.width + threeSize.width * 0.85
 let symbolX = tile.midX - symbolWidth / 2
-let symbolY = tile.minY + side * 0.28
+let symbolY = tile.minY + side * (includeName ? 0.28 : 0.20)
 
 draw("M", size: symbolSize, at: CGPoint(x: symbolX, y: symbolY))
 draw("3", size: superscriptSize, at: CGPoint(
@@ -101,23 +108,30 @@ draw("3", size: superscriptSize, at: CGPoint(
 ))
 
 // Name along the bottom.
-let nameSize = side * 0.077
-let name = "Mac Mouse Mileage"
-let nameWidth = size(of: name, size: nameSize).width
-draw(name, size: nameSize, at: CGPoint(
-    x: tile.midX - nameWidth / 2,
-    y: tile.minY + side * 0.105
-))
-
-image.unlockFocus()
-
-// MARK: - Write PNG
-
-guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
-      let png = rep.representation(using: .png, properties: [:]) else {
-    fatalError("failed to render PNG")
+if includeName {
+    let nameSize = side * 0.077
+    let name = "Mac Mouse Mileage"
+    let nameWidth = size(of: name, size: nameSize).width
+    draw(name, size: nameSize, at: CGPoint(
+        x: tile.midX - nameWidth / 2,
+        y: tile.minY + side * 0.105
+    ))
 }
 
-let outputPath = "Resources/AppIcon.png"
-try png.write(to: URL(fileURLWithPath: outputPath))
-print("Wrote \(outputPath)")
+image.unlockFocus()
+return image
+}
+
+// MARK: - Write PNGs
+
+func write(_ image: NSImage, to path: String) throws {
+    guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+          let png = rep.representation(using: .png, properties: [:]) else {
+        fatalError("failed to render PNG")
+    }
+    try png.write(to: URL(fileURLWithPath: path))
+    print("Wrote \(path)")
+}
+
+try write(renderIcon(includeName: true), to: "Resources/AppIcon.png")
+try write(renderIcon(includeName: false), to: "Resources/AppIcon-small.png")
