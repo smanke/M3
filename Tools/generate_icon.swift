@@ -1,126 +1,113 @@
 #!/usr/bin/env swift
-// Generates the app icon: a computer mouse leaving a dashed "mileage trail"
-// on a gradient rounded-square background. Run with:
+// Generates the app icon: a periodic-table style element tile — atomic number
+// "26" (iron, for mileage), the "M³" symbol, and the name along the bottom.
+// Run with:
 //   swift Tools/generate_icon.swift
 // Produces Resources/AppIcon.png (1024x1024).
 
 import AppKit
 
-let size: CGFloat = 1024
-let image = NSImage(size: NSSize(width: size, height: size))
+let canvas: CGFloat = 1024
+let image = NSImage(size: NSSize(width: canvas, height: canvas))
 
 image.lockFocus()
 guard let ctx = NSGraphicsContext.current?.cgContext else {
     fatalError("no graphics context")
 }
 
-// MARK: - Background: rounded square, indigo -> cyan diagonal gradient
+// A small margin keeps the tile from looking oversized beside other Dock icons.
+let margin = canvas * 0.045
+let tile = CGRect(x: margin, y: margin, width: canvas - margin * 2, height: canvas - margin * 2)
+let side = tile.width
+let cornerRadius = side * 0.215
 
-let cornerRadius: CGFloat = size * 0.225
-let bgRect = CGRect(x: 0, y: 0, width: size, height: size)
-let bgPath = CGPath(roundedRect: bgRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+let tilePath = CGPath(roundedRect: tile, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
+
+// MARK: - Orange body
 
 ctx.saveGState()
-ctx.addPath(bgPath)
+ctx.addPath(tilePath)
 ctx.clip()
 
-let colors = [
-    NSColor(calibratedRed: 0.30, green: 0.25, blue: 0.85, alpha: 1.0).cgColor,
-    NSColor(calibratedRed: 0.02, green: 0.66, blue: 0.85, alpha: 1.0).cgColor,
-] as CFArray
 let colorSpace = CGColorSpaceCreateDeviceRGB()
-let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: [0.0, 1.0])!
+let bodyColors = [
+    NSColor(calibratedRed: 0.98, green: 0.49, blue: 0.13, alpha: 1.0).cgColor,
+    NSColor(calibratedRed: 0.92, green: 0.37, blue: 0.02, alpha: 1.0).cgColor,
+] as CFArray
+let bodyGradient = CGGradient(colorsSpace: colorSpace, colors: bodyColors, locations: [0.0, 1.0])!
 ctx.drawLinearGradient(
-    gradient,
-    start: CGPoint(x: 0, y: size),
-    end: CGPoint(x: size, y: 0),
+    bodyGradient,
+    start: CGPoint(x: tile.minX, y: tile.maxY),
+    end: CGPoint(x: tile.maxX, y: tile.minY),
     options: []
 )
-ctx.restoreGState()
 
-// MARK: - Dashed mileage trail (a winding road behind the mouse)
-
-ctx.saveGState()
-let trail = CGMutablePath()
-trail.move(to: CGPoint(x: size * 0.12, y: size * 0.20))
-trail.addCurve(
-    to: CGPoint(x: size * 0.88, y: size * 0.80),
-    control1: CGPoint(x: size * 0.05, y: size * 0.55),
-    control2: CGPoint(x: size * 0.55, y: size * 0.30)
+// Glossy sheen sweeping across the upper-left, as in the reference art.
+let gloss = CGMutablePath()
+gloss.move(to: CGPoint(x: tile.minX, y: tile.minY + side * 0.52))
+gloss.addCurve(
+    to: CGPoint(x: tile.minX + side * 0.68, y: tile.maxY),
+    control1: CGPoint(x: tile.minX + side * 0.30, y: tile.minY + side * 0.78),
+    control2: CGPoint(x: tile.minX + side * 0.34, y: tile.maxY)
 )
-ctx.addPath(trail)
-ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.30).cgColor)
-ctx.setLineWidth(size * 0.045)
-ctx.setLineCap(.round)
-ctx.setLineDash(phase: 0, lengths: [size * 0.035, size * 0.035])
-ctx.strokePath()
+gloss.addLine(to: CGPoint(x: tile.minX, y: tile.maxY))
+gloss.closeSubpath()
+ctx.addPath(gloss)
+ctx.setFillColor(NSColor.white.withAlphaComponent(0.10).cgColor)
+ctx.fillPath()
+
 ctx.restoreGState()
 
-// Waypoint dots along the trail, fading in as they approach the mouse.
-let waypoints: [(CGPoint, CGFloat)] = [
-    (CGPoint(x: size * 0.16, y: size * 0.24), 0.22),
-    (CGPoint(x: size * 0.28, y: size * 0.44), 0.35),
-    (CGPoint(x: size * 0.46, y: size * 0.53), 0.5),
-]
-for (point, alpha) in waypoints {
-    let r = size * 0.018
-    let dotRect = CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2)
-    ctx.setFillColor(NSColor.white.withAlphaComponent(alpha).cgColor)
-    ctx.fillEllipse(in: dotRect)
+// MARK: - Text
+
+func draw(_ string: String, size: CGFloat, at point: CGPoint) {
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: size, weight: .bold),
+        .foregroundColor: NSColor.white,
+    ]
+    NSAttributedString(string: string, attributes: attributes).draw(at: point)
 }
 
-// MARK: - Mouse silhouette (top-down), positioned upper-right along the trail
+func size(of string: String, size: CGFloat) -> NSSize {
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: size, weight: .bold)
+    ]
+    return NSAttributedString(string: string, attributes: attributes).size()
+}
 
-ctx.saveGState()
-let mouseCenter = CGPoint(x: size * 0.63, y: size * 0.62)
-let mouseWidth = size * 0.34
-let mouseHeight = size * 0.46
-
-// Drop shadow
-ctx.setShadow(offset: CGSize(width: 0, height: -size * 0.012), blur: size * 0.03, color: NSColor.black.withAlphaComponent(0.35).cgColor)
-
-let mouseRect = CGRect(
-    x: mouseCenter.x - mouseWidth / 2,
-    y: mouseCenter.y - mouseHeight / 2,
-    width: mouseWidth,
-    height: mouseHeight
-)
-let mousePath = CGMutablePath()
-mousePath.addPath(CGPath(
-    roundedRect: mouseRect,
-    cornerWidth: mouseWidth * 0.5,
-    cornerHeight: mouseWidth * 0.5,
-    transform: nil
+// Atomic number, top-left.
+let numberSize = side * 0.115
+let numberInset = side * 0.075
+let numberHeight = size(of: "26", size: numberSize).height
+draw("26", size: numberSize, at: CGPoint(
+    x: tile.minX + numberInset,
+    y: tile.maxY - numberInset - numberHeight
 ))
-ctx.addPath(mousePath)
-ctx.setFillColor(NSColor.white.cgColor)
-ctx.fillPath()
-ctx.restoreGState()
 
-// Button divider (top center line)
-ctx.saveGState()
-ctx.setStrokeColor(NSColor(calibratedWhite: 0.55, alpha: 1.0).cgColor)
-ctx.setLineWidth(size * 0.006)
-ctx.move(to: CGPoint(x: mouseCenter.x, y: mouseRect.maxY - mouseWidth * 0.08))
-ctx.addLine(to: CGPoint(x: mouseCenter.x, y: mouseCenter.y + mouseHeight * 0.08))
-ctx.strokePath()
-ctx.restoreGState()
+// "M" with a superscript "3", treated as one unit so it centres properly.
+let symbolSize = side * 0.52
+let superscriptSize = side * 0.21
+let mSize = size(of: "M", size: symbolSize)
+let threeSize = size(of: "3", size: superscriptSize)
 
-// Scroll wheel
-ctx.saveGState()
-let wheelWidth = mouseWidth * 0.10
-let wheelHeight = mouseHeight * 0.14
-let wheelRect = CGRect(
-    x: mouseCenter.x - wheelWidth / 2,
-    y: mouseRect.maxY - mouseWidth * 0.30,
-    width: wheelWidth,
-    height: wheelHeight
-)
-let wheelPath = CGPath(roundedRect: wheelRect, cornerWidth: wheelWidth / 2, cornerHeight: wheelWidth / 2, transform: nil)
-ctx.addPath(wheelPath)
-ctx.setFillColor(NSColor(calibratedRed: 0.30, green: 0.25, blue: 0.85, alpha: 1.0).cgColor)
-ctx.fillPath()
-ctx.restoreGState()
+let symbolWidth = mSize.width + threeSize.width * 0.85
+let symbolX = tile.midX - symbolWidth / 2
+let symbolY = tile.minY + side * 0.28
+
+draw("M", size: symbolSize, at: CGPoint(x: symbolX, y: symbolY))
+draw("3", size: superscriptSize, at: CGPoint(
+    x: symbolX + mSize.width - threeSize.width * 0.12,
+    y: symbolY + mSize.height * 0.44
+))
+
+// Name along the bottom.
+let nameSize = side * 0.077
+let name = "Mac Mouse Mileage"
+let nameWidth = size(of: name, size: nameSize).width
+draw(name, size: nameSize, at: CGPoint(
+    x: tile.midX - nameWidth / 2,
+    y: tile.minY + side * 0.105
+))
 
 image.unlockFocus()
 
