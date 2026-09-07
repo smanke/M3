@@ -8,6 +8,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Held so its checkmark can be refreshed on open; the menu itself is
     /// built once because the charts item hosts a live SwiftUI view.
     private var launchUpdateCheckItem: NSMenuItem?
+    /// Held for the same reason: its title changes once the launch check has
+    /// found a release waiting.
+    private var updateItem: NSMenuItem?
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -42,6 +45,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let updateItem = menu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
         updateItem.toolTip = "Download and install the latest release from GitHub, then restart."
+        self.updateItem = updateItem
 
         let autoUpdateItem = menu.addItem(withTitle: "Check for Updates at Launch", action: #selector(toggleLaunchUpdateCheck), keyEquivalent: "")
         autoUpdateItem.target = self
@@ -65,6 +69,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         historyViewModel.refresh()
         launchUpdateCheckItem?.state = UpdateSettings.checkForUpdatesAtLaunch ? .on : .off
+
+        // A release found by the launch check is offered here rather than prompted
+        // for, so an install only ever follows a click the user made.
+        if let pending = UpdateAvailability.shared.pending {
+            updateItem?.title = "Update to \(pending)…"
+            updateItem?.toolTip = "A newer release is available. Downloading and installing it needs your confirmation."
+        } else {
+            updateItem?.title = "Check for Updates…"
+            updateItem?.toolTip = "Download and install the latest release from GitHub, then restart."
+        }
     }
 
     @objc private func metricsDidUpdate() {
